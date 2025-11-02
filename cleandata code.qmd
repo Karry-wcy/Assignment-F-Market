@@ -1,0 +1,97 @@
+---
+title: "Clean data"
+format: html
+editor: visual
+---
+
+## Clean Data
+
+Before conducting analysis, we first cleaned and merged three separate datasets: **market price**, **market value**, and **market supply**. Missing or inconsistent records were removed to ensure comparability across all years. Column names were standardized, and data types were adjusted to numeric where appropriate. Finally, all three datasets were merged by year to create a single consistent dataset.
+
+1.Set up
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_knit$set(root.dir = "~/Downloads/strawberry-1")  
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(stringr)
+options(scipen = 999) 
+```
+
+2.Read data
+
+```{r}
+setwd("~/Downloads/strawberry-1")
+price  <- read_csv("market_price_received.csv")
+supply <- read_csv("marketsupply.csv")
+value  <- read_csv("marketvalue.csv")
+
+glimpse(price)
+glimpse(supply)
+glimpse(value)
+```
+
+3.Clean data
+
+```{r}
+library(stringr)
+library(dplyr)
+clean_strawberry <- function(df) {
+  df %>%
+    mutate(across(where(is.character), str_trim)) %>%
+    select(where(~ !all(is.na(.)) & n_distinct(., na.rm = TRUE) > 1)) %>%
+    
+    mutate(
+      Value = str_replace_all(Value, ",", ""),
+      Value = str_remove_all(Value, "\\(D\\)|\\(Z\\)|\\(NA\\)|\\*|\\(X\\)"),
+      Value = str_trim(Value),
+      Value = suppressWarnings(as.numeric(Value))
+    ) %>%
+
+    { if(any(grepl("CV", names(.), ignore.case = TRUE))) {
+        rename_with(., ~ "CV", matches("CV")) %>% 
+          mutate(CV = suppressWarnings(as.numeric(CV)))
+      } else . } %>%
+    filter(!is.na(Value))
+}
+
+supply_clean <- clean_strawberry(supply)
+value_clean  <- clean_strawberry(value)
+
+library(readr)
+write_csv(supply_clean, "/Users/zzjing/Downloads/strawberry/marketsupply_clean.csv")
+write_csv(value_clean,  "/Users/zzjing/Downloads/strawberry/marketvalue_clean.csv")
+
+library(dplyr)
+library(readr)
+
+old <- read_csv("marketsupply_clean.csv")
+new <- read_csv("marketsupply2.csv")
+
+new_clean <- new %>%
+  select(Year, Period, State, `State ANSI`, Value) %>%
+  mutate(
+    Value = na_if(Value, " (D)"),
+    Value = gsub(",", "", Value),
+    Value = as.numeric(Value)
+  )
+
+supply_all <- bind_rows(old, new_clean) %>%
+  arrange(Year, State)
+
+summary(supply_all$Year)
+distinct(supply_all, Year) %>% arrange(Year)
+sum(is.na(supply_all$Value))
+supply_all_clean <- supply_all %>%
+  filter(!is.na(Value))
+na.rm = TRUE
+supply_all %>%
+  summarise(total = sum(Value, na.rm = TRUE))
+write.csv(supply_all, "marketsupply_all_cleaned.csv", row.names = FALSE)
+```
+
+4.Data and Methods
+
+Data were downloaded from USDA NASS Quick Stats for years 1998–2024 (national level) and 1998–2018 (state level). The datasets include both national and state‐specific statistics for fresh-market strawberries. Cleaning steps included: Selecting relevant variables (Year, State, Data Item, Value). Removing non-numeric entries (e.g., (D) for withheld data). Converting price and production values to numeric format. Filtering out rows with missing or zero values. Aggregating prices and total market value by year.
