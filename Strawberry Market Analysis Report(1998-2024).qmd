@@ -1,0 +1,312 @@
+---
+title: "Strawberry Market Analysis Report(1998-2024)"
+format: html
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+Chenyi Wang, La Su, Zijing Zhao.
+
+## Introduction
+
+This project explores trends in the U.S. strawberry market using data from the USDA/NASS. The analysis focuses on three core indicators: **market price**, **market value**, and **market supply**. Our goal is to understand how these factors have changed over time and how they relate to one another. To support this analysis, we cleaned and merged multiple datasets to create a consistent dataset for exploratory data analysis (EDA).
+
+## Analysis
+
+## 1.price
+
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+
+straw_price <- read_csv("market_price_received.csv", show_col_types = FALSE)
+
+straw_price_clean <- straw_price %>%
+  select(Year, State, Value) %>%
+  rename(Price_CWT = Value) %>%
+  mutate(Price_CWT = as.numeric(gsub("[^0-9.]", "", Price_CWT))) %>%
+  filter(!is.na(Price_CWT)) %>%
+  arrange(Year, State)
+knitr::kable(
+  straw_price_clean %>%
+    head(10),
+  caption = "Table 1. Preview of Cleaned USDA Strawberry Price Data (first 10 rows)",
+  align = "c",
+  booktabs = TRUE
+)
+```
+
+Interpretation
+
+Table 1 presents a preview of the cleaned USDA strawberry price dataset. It shows yearly average prices across U.S. states from 1998 to 2024. Each observation represents the average price per hundredweight(CWT) for a given state and year.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+price_trend <- straw_price_clean %>%
+  group_by(Year) %>%
+  summarise(mean_price = mean(Price_CWT, na.rm = TRUE))
+
+ggplot(price_trend, aes(x = Year, y = mean_price)) +
+  geom_line(color = "#2E86C1", linewidth = 1.2) +
+  geom_point(color = "#1B4F72", size = 2.2) +
+  geom_smooth(method = "loess", se = FALSE, color = "#117A65", 
+              linetype = "dashed", linewidth = 0.8) +
+  labs(
+    title = "Figure 1. Average U.S. Strawberry Price Received (1998–2024)",
+    subtitle = "Measured in $ per CWT (100 lbs)",
+    x = "Year",
+    y = "Average Price ($/CWT)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle = element_text(size = 10, hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linewidth = 0.4)
+  )
+```
+
+Interpretation
+
+From 1998 to 2024, the average price received by U.S. strawberry growers has followed a steady upward path, with a few ups and downs. Prices rose from about **\$85 in the late 1990s to nearly \$180 per CWT** before 2010, reflecting growing consumer demand and higher production costs. Between 2011 and 2018, prices remained high but relatively stable. A sharp decline around 2020 likely resulted from Covid-19 labor shortages and unfavorable weather conditions. Since 2021, prices have bounced back and stabilized between **\$140–150 per CWT**, suggesting recovery but still adjusting market. Overall, the pattern reflects a resilient and adaptive U.S. strawberry market.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+top_states <- c("CALIFORNIA", "FLORIDA", "OREGON", "NORTH CAROLINA")
+
+ggplot(straw_price_clean %>% filter(State %in% top_states),
+       aes(x = Year, y = Price_CWT, color = State)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    title = "Figure 2. Strawberry Prices by State (Fresh Market)",
+    y = "Price Received ($/CWT)",
+    x = "Year",
+    color = "State"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 11),
+    axis.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+```
+
+Interpretation
+
+From 1998 to 2018, strawberry prices in both Oregon and North Carolina increased substantially, but their levels and volatility differed. Oregon consistently received higher prices (often **\>\$150 per CWT**) refecting its smaller, high value production and demand. In contrast, North Carolina’s prices started much lower (around **\$60–80 per CWT**) and rose gradually, narrowing the gap to **roughly \$150 per CWT** by the late 2010s. Oregon’s prices show larger swings, suggesting greater sensitivity. Both states share an upward trend, indicating overall growth in prices for fresh strawberries.
+
+**CONCLUSION:**
+
+U.S. strawberry prices in the fresh market have shown a steady upward trend since the late 1990s, rising from about \$85 to \$140-150 per CWT. At the state level, Oregon consistently records higher prices than North Carolina, reflecting differences in production scale, climate, and market quality. Although prices have fluctuated over time, they have stabilized in recent years, indicating the U.S. strawberry market is matured and resilient market.
+
+## 2.supply
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+supply_all <- read_csv("marketsupply_all_cleaned.csv", show_col_types = FALSE)
+annual_total <- supply_all %>%
+  group_by(Year) %>%
+  summarise(total_value = sum(Value, na.rm = TRUE))
+
+ggplot(annual_total, aes(x = Year, y = total_value)) +
+  geom_line(linewidth = 1.2, color = "pink") +
+  geom_point(size = 2, color = "pink") +
+  labs(
+    title = "Figure 3. U.S. Strawberry Market Supply (1998–2024)",
+    subtitle = "Measured in total production (CWT, 100 lbs each)",
+    x = "Year",
+    y = "Total Production (CWT)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 11),
+    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+Interpretation
+
+Total U.S. strawberry production has generally increased from 1998 to 2024, with spikes around **2010** and **2017** followed by sharp decline. These fluctuations likely reflect changes in weather and labor availability. In recent years, production levels recovered and stabilized, suggesting improved efficiency and a resilient national supply chain.
+
+```{r}
+top_states <- supply_all %>%
+  group_by(State) %>%
+  summarise(avg_value = mean(Value, na.rm = TRUE)) %>%
+  arrange(desc(avg_value)) %>%
+  slice(1:5) %>%
+  pull(State)
+
+supply_top <- supply_all %>%
+  filter(State %in% top_states)
+
+ggplot(supply_top, aes(x = Year, y = Value, color = State)) +
+  geom_line(linewidth = 1.3) +
+  geom_point(size = 2) +
+  geom_smooth(se = FALSE, method = "loess", linetype = "dashed", color = "#7F7F7F") +
+  labs(
+    title = "Figure 4. Top 5 Strawberry-Producing States (1998–2024)",
+    subtitle = "Measured in total production (CWT, 100 lbs each)",
+    x = "Year",
+    y = "Production (CWT)",
+    color = "State"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+Interpretation
+
+This graph compares production trends across the **five leading strawberry producing states** in the U.S.. California clearly dominates the national supply throughout the observed period, while Florida and North Carolina contribute at much smaller scales. The “Other States” category rises slightly in later years, indicating a modest diversification of production beyond traditional growing regions.
+
+**CONCLUSION:**
+
+The combined dataset integrates USDA strawberry market supply records from 1998-2015 and 2016-2024, providing a continuous timeline for long-term trend analysis. Merging these datasets was necessary because each covered a different time span of the same variable — total state-level strawberry production. Combining them enabled a unified and consistent view of supply dynamics across decades.
+
+As shown in Figure 3, total U.S. strawberry production has fluctuated notably over time, with clear peaks around 2009–2010 and 2017, followed by a moderate increase after 2020. These variations likely reflect both climatic impacts and market-driven factors influencing harvest volumes. Figure 4 highlights the dominance of California, which consistently accounts for the vast majority of national output. Meanwhile, Florida and North Carolina contribute smaller but stable shares, and minor increases among “Other States” suggest gradual diversification beyond traditional growing regions.
+
+Overall, the merged dataset provides a comprehensive and coherent picture of long-term U.S. strawberry supply trends, facilitating robust interpretation and policy-relevant insights into the resilience and structure of the national market.
+
+## 3.value
+
+```{r, fig.width=7, fig.height=5, fig.align='center'}
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+value_all <- read_csv("marketvalue_clean.csv")
+
+annual_value <- value_all %>%
+  group_by(Year) %>%
+  summarise(total_value = sum(Value, na.rm = TRUE))
+
+p <- ggplot(annual_value, aes(x = Year, y = total_value)) +
+  geom_line(linewidth = 1.3, color = "#FF0000") +
+  geom_point(size = 2.3, color = "#FF0000") +
+  geom_smooth(method = "loess", se = FALSE, color = "#0000FF", linetype = "dashed") +
+  labs(
+    title = "Figure 5. U.S. Strawberry Market Value (1998–2024)",
+    subtitle = "Measured in total annual market value (USD)",
+    x = "Year",
+    y = "Total Value (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+print(p)
+
+```
+
+Interpretation
+
+The total market value of U.S. strawberries has shown strong long-term growth since 1998, rising from **under \$1 billion to over \$3 billion** by 2024. Sharp peaks around 2016 and 2018 reflect periods of high prices and production, while the drop near 2020 likely corresponds to Covid-19 related disruptions. The steady rebound after 2021 suggests recovery and continued consumer demand, highlighting the overall resilience and profitability of the U.S. strawberry market.
+
+```{r, fig.width=7.5, fig.height=4.8, fig.align='center'}
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+state_value <- value_all %>%
+  group_by(State) %>%
+  summarise(mean_value = mean(Value, na.rm = TRUE)) %>%
+  arrange(desc(mean_value))
+
+ggplot(state_value, aes(x = reorder(State, mean_value), y = mean_value)) +
+  geom_col(fill = "#AF7AC5", alpha = 0.9) +
+  coord_flip(clip = "off") +
+  geom_text(
+    aes(label = round(mean_value / 1e6, 1)),
+    hjust = -0.05,
+    color = "gray20",
+    size = 3.5
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Figure 6. Average Strawberry Market Value by State (1998–2024)",
+    subtitle = "Measured in average annual market value (USD)",
+    x = "State",
+    y = "Average Value (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(size = 9.5, hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(10, 40, 10, 20)
+  )
+
+
+```
+
+Interpretation
+
+This horizontal bar chart compares the average market value of strawberry production across U.S. states between 1998 and 2024. California leads the U.S. strawberry market in value, averaging **nearly \$1.5 billion annually**, followed by a combined “Other States” category at **around \$1.36 billion**. Florida ranks a distant third, contributing **about \$244 million** per year, while all remaining states represent only a small fraction of national market value. This distribution underscores California’s dominance in production and revenue generation, while highlighting the relatively limited economic scale of strawberry industries in other regions.
+
+```{r}
+california_value <- value_all %>%
+  filter(State == "CALIFORNIA")
+
+ggplot(california_value, aes(x = Year, y = Value)) +
+  geom_line(linewidth = 1.3, color = "#BB2649") +
+  geom_point(size = 2.3, color = "#BB2649") +
+  geom_smooth(method = "loess", se = FALSE, color = "blue", linetype = "dashed") +
+  labs(
+    title = "Figure 7. California Strawberry Market Value (1998–2024)",
+    subtitle = "Measured in total annual market value (USD)",
+    x = "Year",
+    y = "Value (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    axis.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+
+```
+
+Interpretation
+
+This chart focuses on California, the leading state in U.S. strawberry production. From 1998 to 2015, California’s market value showed a steady and substantial increase, reflecting the state’s strong productivity and global demand. After 2016, the trend became more volatile, likely influenced by climate variability, labor costs, and export dynamics. Despite these fluctuations, California remains the core driver of the national strawberry economy, maintaining its dominant position over the entire study period.
+
+**CONCLUSION:**
+
+This strawberry market value analysis provides a comprehensive overview of economic trends in the U.S. strawberry industry from 1998 to 2024. Overall, total market value shows a strong upward trajectory, with notable fluctuations around 2017 and 2020, likely driven by climatic variation, market shifts, and production adjustments. California remains the dominant producer, accounting for the vast majority of national value, followed by Florida and a smaller contribution from other states. The steady rise in total value, alongside regional concentration, suggests that the U.S. strawberry industry has become increasingly valuable yet regionally dependent over time.
+
+## **Summary**
+
+From 1998 to 2024, the U.S. strawberry market has shown both steady growth and occasional ups and downs across price, supply, and value. Overall production and market value have risen, reflecting the industry’s growing scale and economic importance. At the same time, fluctuations from year to year reveal how weather, labor costs, and changing demand continue to shape the market. California remains the clear leader in both production and value, emphasizing its vital role in the national supply chain. Overall, the market looks strong but regionally concentrated, suggesting the need for long-term sustainability and diversification to keep the industry resilient in the future.
+
+## Reference
+
+Data Source: USDA National Agricultural Statistics Service (NASS).\
+<https://www.nass.usda.gov/>
